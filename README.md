@@ -12,13 +12,13 @@
 
 A self-hosted deploy platform for your own servers, built on [Coolify](https://github.com/coollabsio/coolify) (Apache-2.0) and extended by StandaloneCoders.
 
-This repository only holds the install steps and scripts. The platform itself ships as a private Docker image:
+This repository only holds the install steps and scripts. The platform itself ships as a public Docker image:
 
 | Image | `ghcr.io/roastcoder/standalonecoders-cloud:latest` |
 |---|---|
 | Base | Coolify 4.x |
 | Architectures | amd64, arm64 |
-| Access | Private: you need an access token from StandaloneCoders |
+| Access | Public: no account or token needed |
 
 ## What you get on top of Coolify
 
@@ -34,7 +34,6 @@ This repository only holds the install steps and scripts. The platform itself sh
 
 - A server with **Ubuntu 22.04/24.04 or Debian 12**, at least **2 CPU cores, 4 GB RAM and 40 GB disk** (8 GB RAM if you want the local AI assistant).
 - **Root** access over SSH.
-- An **access token** from StandaloneCoders: a username (`GH_USER`) and a token (`GH_TOKEN`). [Contact us](https://standalonecoders.com) to get one.
 - Ports **22, 80, 443 and 8000** open.
 
 ## Option A: New server
@@ -43,18 +42,13 @@ This repository only holds the install steps and scripts. The platform itself sh
    ```bash
    ssh root@your-server-ip
    ```
-2. Download the installer:
+2. Run the installer:
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/Roastcoder/standalonecoders-cloud-install/main/install.sh -o install.sh
+   curl -fsSL https://raw.githubusercontent.com/Roastcoder/standalonecoders-cloud-install/main/install.sh | bash
    ```
-3. Run it with your access details:
-   ```bash
-   GH_USER="your-username" GH_TOKEN="your-token" bash install.sh
-   ```
-   It installs Docker and the base platform, then StandaloneCoders Cloud. This takes 5 to 10 minutes.
-   You can also run just `bash install.sh`: it asks for the username and token (the token is hidden as you type). The installer shows each step with a progress spinner, and keeps the full log in `/tmp/standalonecoders-install.log`.
-4. Open `http://your-server-ip:8000` and create the first admin account. **Do this straight away**: until an admin exists, anyone who opens the page can register.
-5. In **Settings**, set your panel domain (for example `https://cloud.example.com`) so it gets HTTPS.
+   It installs Docker and the base platform, then StandaloneCoders Cloud. This takes 5 to 10 minutes. Each step shows a progress spinner, and the full log is kept in `/tmp/standalonecoders-install.log`.
+3. Open `http://your-server-ip:8000` and create the first admin account. **Do this straight away**: until an admin exists, anyone who opens the page can register.
+4. In **Settings**, set your panel domain (for example `https://cloud.example.com`) so it gets HTTPS.
 
 ## What the installer looks like
 
@@ -73,7 +67,6 @@ Each step is numbered, long steps show a spinner, and a failed step shows the er
       Found an installation in /data/coolify/source. Your projects and data stay.
 
 [2/4] Downloading StandaloneCoders Cloud
-      ✓ Logged in as your-username
       ✓ Pulling the image
 
 [3/4] Backing up your data
@@ -96,26 +89,21 @@ Your projects, apps, databases, servers, domains and settings all stay. Only the
 
 1. **Check your version.** The installer stops if your Coolify is newer than StandaloneCoders Cloud, because going back in version can damage the database. Wait for our next release in that case.
 2. **Make your own backup** too (recommended): in Coolify go to **Settings → Backup** and run a backup, or copy `/data/coolify` off the server.
-3. Log in to the server as root and download the installer:
+3. Log in to the server as root and run the installer:
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/Roastcoder/standalonecoders-cloud-install/main/install.sh -o install.sh
-   ```
-4. Run it:
-   ```bash
-   GH_USER="your-username" GH_TOKEN="your-token" bash install.sh
+   curl -fsSL https://raw.githubusercontent.com/Roastcoder/standalonecoders-cloud-install/main/install.sh | bash
    ```
    What it does, in order:
-   1. Logs Docker in to the private image registry.
-   2. Downloads StandaloneCoders Cloud.
-   3. Checks that it is not a downgrade.
-   4. Backs up the panel database and `.env` to `/data/coolify/backups/before-standalonecoders/`.
-   5. Adds `/data/coolify/source/docker-compose.custom.yml`, which points the panel at our image.
-   6. Restarts only the panel container. Your apps keep running, and the panel is offline for about a minute.
-5. Open your panel as usual and log in with your existing account.
+   1. Downloads StandaloneCoders Cloud.
+   2. Checks that it is not a downgrade.
+   3. Backs up the panel database and `.env` to `/data/coolify/backups/before-standalonecoders/`.
+   4. Adds `/data/coolify/source/docker-compose.custom.yml`, which points the panel at our image.
+   5. Restarts only the panel container. Your apps keep running, and the panel is offline for about a minute.
+4. Open your panel as usual and log in with your existing account.
 
 ### Coming from an older StandaloneCoders install
 
-Run the same two commands as Option B. The installer sees the older version and updates it in place.
+Run the same command as Option B. The installer sees the older version and updates it in place.
 
 ## Updating
 
@@ -136,19 +124,11 @@ It backs up the database to `/data/coolify/backups/before-switch-back/`, removes
 
 | Problem | Fix |
 |---|---|
-| `Login failed` | Check `GH_USER` and `GH_TOKEN`. The token needs the `read:packages` permission. |
-| `Could not download` | Your token does not have access to the image yet. Ask StandaloneCoders to grant it. |
+| `Could not download` | The server cannot reach `ghcr.io`. Check its internet connection and DNS, then run the installer again. |
 | `newer than StandaloneCoders Cloud` | Wait for our next release, or run again with `FORCE=1` only if you accept the risk. |
 | Panel shows "restarting" for more than 5 minutes | Run `docker logs coolify --tail 50` on the server and send us the output. |
 
 To restore a backup: `cat /data/coolify/backups/before-standalonecoders/database-<time>.sql | docker exec -i coolify-db psql -U coolify -d coolify`
-
-## For the image owner: giving someone access
-
-1. Create a separate GitHub account for installs (do not use your own token: it would give access to all your private packages).
-2. GitHub → your profile → **Packages → standalonecoders-cloud → Package settings → Manage access** → add that account with **Read**.
-3. Signed in as that account: **Settings → Developer settings → Personal access tokens (classic)** → new token with only **`read:packages`**.
-4. Give the user that account's username and the token.
 
 ## License
 

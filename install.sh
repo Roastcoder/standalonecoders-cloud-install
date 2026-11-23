@@ -2,8 +2,7 @@
 # Installs StandaloneCoders Cloud on a fresh server, or switches an existing Coolify server to it.
 # Projects, databases, servers and settings are kept. Run as root:
 #
-#   curl -fsSL https://raw.githubusercontent.com/Roastcoder/standalonecoders-cloud-install/main/install.sh -o install.sh
-#   GH_USER="<username you were given>" GH_TOKEN="<access token you were given>" bash install.sh
+#   curl -fsSL https://raw.githubusercontent.com/Roastcoder/standalonecoders-cloud-install/main/install.sh | bash
 #
 # Set FORCE=1 to switch even when the installed Coolify is newer than StandaloneCoders Cloud.
 set -euo pipefail
@@ -53,10 +52,6 @@ run() {
 banner
 [ "$(id -u)" = 0 ] || fail "Run this as root, for example: sudo -E bash install.sh"
 command -v curl >/dev/null || fail "curl is missing. Install it first: apt-get install -y curl"
-# Ask for the access details when they were not passed in and someone is at the keyboard.
-if [ -z "${GH_USER:-}" ] && [ -r /dev/tty ]; then read -rp "      Access username: " GH_USER </dev/tty; fi
-if [ -z "${GH_TOKEN:-}" ] && [ -r /dev/tty ]; then read -rsp "      Access token (hidden): " GH_TOKEN </dev/tty; echo; fi
-[ -n "${GH_USER:-}" ] && [ -n "${GH_TOKEN:-}" ] || fail "Set GH_USER and GH_TOKEN to the access details you were given. See the README."
 
 # 1. Fresh server: install the base platform (Docker, database, proxy) with the official installer.
 if [ ! -f "$SOURCE_DIR/docker-compose.yml" ]; then
@@ -72,13 +67,9 @@ else
 fi
 command -v docker >/dev/null || fail "Docker is not installed. The base installation did not finish."
 
-# 2. Log in to the image registry. Docker keeps the login, so later updates work without the token.
+# 2. The image is public, so no registry login is needed.
 say "Downloading StandaloneCoders Cloud"
-# Not through run(): a background job gets no stdin, so the token pipe would be lost.
-printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GH_USER" --password-stdin >>"$LOG" 2>&1 \
-    && printf '      %s✓%s Logged in as %s\n' "$G" "$N" "$GH_USER" \
-    || fail "Login failed. Check GH_USER and GH_TOKEN, and that the token has the read:packages permission."
-run "Pulling the image" docker pull "$IMAGE" || fail "Could not download $IMAGE. Your token may not have access to it yet."
+run "Pulling the image" docker pull "$IMAGE" || fail "Could not download $IMAGE. Check the server's internet connection. Full log: $LOG"
 
 # 3. Existing server: refuse to go back in version, and back up first.
 if [ "$EXISTING" = 1 ]; then
