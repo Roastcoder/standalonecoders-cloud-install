@@ -42,6 +42,7 @@ This repository only holds the install steps and scripts. The platform itself sh
    GH_USER="your-username" GH_TOKEN="your-token" bash install.sh
    ```
    It installs Docker and the base platform, then StandaloneCoders Cloud. This takes 5 to 10 minutes.
+   You can also run just `bash install.sh`: it asks for the username and token (the token is hidden as you type). The installer shows each step with a progress spinner, and keeps the full log in `/tmp/standalonecoders-install.log`.
 4. Open `http://your-server-ip:8000` and create the first admin account. **Do this straight away**: until an admin exists, anyone who opens the page can register.
 5. In **Settings**, set your panel domain (for example `https://cloud.example.com`) so it gets HTTPS.
 

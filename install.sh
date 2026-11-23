@@ -13,30 +13,72 @@ RAW="https://raw.githubusercontent.com/Roastcoder/standalonecoders-cloud-install
 SOURCE_DIR=/data/coolify/source
 BACKUP_DIR=/data/coolify/backups/before-standalonecoders
 
-say() { printf '\n==> %s\n' "$*"; }
-fail() { printf '\nError: %s\n' "$*" >&2; exit 1; }
+LOG=/tmp/standalonecoders-install.log
+: > "$LOG"
+if [ -t 1 ]; then G=$'\e[38;5;155m'; D=$'\e[2m'; R=$'\e[31m'; B=$'\e[1m'; N=$'\e[0m'; else G= D= R= B= N=; fi
+STEP=0; TOTAL=4
 
+banner() {
+    printf '%s\n' "$G" \
+'  ███████╗ ██████╗    ██████╗██╗      ██████╗ ██╗   ██╗██████╗' \
+'  ██╔════╝██╔════╝   ██╔════╝██║     ██╔═══██╗██║   ██║██╔══██╗' \
+'  ███████╗██║        ██║     ██║     ██║   ██║██║   ██║██║  ██║' \
+'  ╚════██║██║        ██║     ██║     ██║   ██║██║   ██║██║  ██║' \
+'  ███████║╚██████╗   ╚██████╗███████╗╚██████╔╝╚██████╔╝██████╔╝' \
+'  ╚══════╝ ╚═════╝    ╚═════╝╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝'
+    printf '%s  StandaloneCoders Cloud installer   mail · WhatsApp AI · safe updates%s\n\n' "$D" "$N"
+}
+say() { STEP=$((STEP + 1)); printf '\n%s[%d/%d]%s %s%s%s\n' "$G" "$STEP" "$TOTAL" "$N" "$B" "$*" "$N"; }
+info() { printf '      %s%s%s\n' "$D" "$*" "$N"; }
+fail() { printf '\n%s✗ %s%s\n' "$R" "$*" "$N" >&2; exit 1; }
+
+# Runs a command with a spinner. Output goes to $LOG and its tail is shown if the command fails.
+run() {
+    local label=$1; shift
+    "$@" >>"$LOG" 2>&1 &
+    local pid=$! i=0 frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    while kill -0 "$pid" 2>/dev/null; do
+        [ -t 1 ] && printf '\r      %s%s%s %s' "$G" "${frames:i++%10:1}" "$N" "$label"
+        sleep 0.1
+    done
+    if wait "$pid"; then
+        printf '\r      %s✓%s %s\n' "$G" "$N" "$label"
+    else
+        printf '\r      %s✗%s %s\n' "$R" "$N" "$label"
+        tail -n 15 "$LOG" | sed 's/^/        /'
+        return 1
+    fi
+}
+
+banner
 [ "$(id -u)" = 0 ] || fail "Run this as root, for example: sudo -E bash install.sh"
-[ -n "${GH_USER:-}" ] && [ -n "${GH_TOKEN:-}" ] || fail "Set GH_USER and GH_TOKEN to the access details you were given. See the README."
 command -v curl >/dev/null || fail "curl is missing. Install it first: apt-get install -y curl"
+# Ask for the access details when they were not passed in and someone is at the keyboard.
+if [ -z "${GH_USER:-}" ] && [ -r /dev/tty ]; then read -rp "      Access username: " GH_USER </dev/tty; fi
+if [ -z "${GH_TOKEN:-}" ] && [ -r /dev/tty ]; then read -rsp "      Access token (hidden): " GH_TOKEN </dev/tty; echo; fi
+[ -n "${GH_USER:-}" ] && [ -n "${GH_TOKEN:-}" ] || fail "Set GH_USER and GH_TOKEN to the access details you were given. See the README."
 
 # 1. Fresh server: install the base platform (Docker, database, proxy) with the official installer.
 if [ ! -f "$SOURCE_DIR/docker-compose.yml" ]; then
-    say "No existing installation found. Installing the base platform first (takes a few minutes)."
-    curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
+    say "Installing the base platform"
+    info "No existing installation found. This takes a few minutes."
+    run "Docker, database and proxy" bash -c 'curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash' \
+        || fail "The base installation failed. Full log: $LOG"
     EXISTING=0
 else
+    say "Checking the existing installation"
+    info "Found an installation in $SOURCE_DIR. Your projects and data stay."
     EXISTING=1
 fi
 command -v docker >/dev/null || fail "Docker is not installed. The base installation did not finish."
 
 # 2. Log in to the image registry. Docker keeps the login, so later updates work without the token.
-say "Logging in to ghcr.io as $GH_USER"
-echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_USER" --password-stdin >/dev/null \
-    || fail "Login failed. Check GH_USER and GH_TOKEN, and that the token has the read:packages permission."
-
 say "Downloading StandaloneCoders Cloud"
-docker pull "$IMAGE" >/dev/null || fail "Could not download $IMAGE. Your token may not have access to it yet."
+# Not through run(): a background job gets no stdin, so the token pipe would be lost.
+printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GH_USER" --password-stdin >>"$LOG" 2>&1 \
+    && printf '      %s✓%s Logged in as %s\n' "$G" "$N" "$GH_USER" \
+    || fail "Login failed. Check GH_USER and GH_TOKEN, and that the token has the read:packages permission."
+run "Pulling the image" docker pull "$IMAGE" || fail "Could not download $IMAGE. Your token may not have access to it yet."
 
 # 3. Existing server: refuse to go back in version, and back up first.
 if [ "$EXISTING" = 1 ]; then
@@ -44,9 +86,9 @@ if [ "$EXISTING" = 1 ]; then
     CURRENT=${CURRENT_IMAGE##*:}
     OURS=$(docker image inspect "$IMAGE" --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' 2>/dev/null || true)
     case "$CURRENT_IMAGE" in
-        *roastcoder*) say "StandaloneCoders Cloud is already installed. Updating it." ;;
+        *roastcoder*) info "StandaloneCoders Cloud is already installed. Updating it." ;;
         *)
-            say "Found Coolify ${CURRENT:-unknown}. StandaloneCoders Cloud is version ${OURS:-unknown}."
+            info "Found Coolify ${CURRENT:-unknown}. StandaloneCoders Cloud is version ${OURS:-unknown}."
             if [ -n "$CURRENT" ] && [ -n "$OURS" ] && [ "$CURRENT" != latest ] \
                 && [ "$(printf '%s\n%s\n' "$CURRENT" "$OURS" | sort -V | tail -1)" != "$OURS" ] && [ "${FORCE:-0}" != 1 ]; then
                 fail "Your Coolify ($CURRENT) is newer than StandaloneCoders Cloud ($OURS). Switching now would move the database back in version. Wait for the next StandaloneCoders release, or run again with FORCE=1 if you accept the risk."
@@ -54,29 +96,34 @@ if [ "$EXISTING" = 1 ]; then
             ;;
     esac
 
-    say "Backing up the database and settings to $BACKUP_DIR"
+    say "Backing up your data"
     mkdir -p "$BACKUP_DIR"
     STAMP=$(date -u +%Y%m%d-%H%M%S)
-    docker exec coolify-db sh -c 'pg_dump -U "$POSTGRES_USER" -d "${POSTGRES_DB:-coolify}"' > "$BACKUP_DIR/database-$STAMP.sql" \
+    backup_db() { docker exec coolify-db sh -c 'pg_dump -U "$POSTGRES_USER" -d "${POSTGRES_DB:-coolify}"' > "$BACKUP_DIR/database-$STAMP.sql"; }
+    run "Database" backup_db \
         || fail "The database backup failed, so nothing was changed."
     cp "$SOURCE_DIR/.env" "$BACKUP_DIR/env-$STAMP"
     chmod 600 "$BACKUP_DIR/env-$STAMP" "$BACKUP_DIR/database-$STAMP.sql"
-    echo "Backup: $BACKUP_DIR/database-$STAMP.sql"
+    info "Saved to $BACKUP_DIR/database-$STAMP.sql"
+else
+    say "Backing up your data"
+    info "Fresh server, nothing to back up."
 fi
 
 # 4. Point the panel at our image. The official updater also reads this file, so the switch survives its upgrades.
 say "Switching the panel to StandaloneCoders Cloud"
-curl -fsSL "$RAW/docker-compose.custom.yml" -o "$SOURCE_DIR/docker-compose.custom.yml"
-curl -fsSL "$RAW/update.sh" -o "$SOURCE_DIR/update-custom.sh"
+fetch_files() {
+    curl -fsSL "$RAW/docker-compose.custom.yml" -o "$SOURCE_DIR/docker-compose.custom.yml" \
+        && curl -fsSL "$RAW/update.sh" -o "$SOURCE_DIR/update-custom.sh"
+}
+run "Downloading the settings" fetch_files \
+    || fail "Could not download the settings files. Full log: $LOG"
 chmod +x "$SOURCE_DIR/update-custom.sh"
-bash "$SOURCE_DIR/update-custom.sh"
+run "Restarting the panel (about a minute; your apps keep running)" bash "$SOURCE_DIR/update-custom.sh" \
+    || fail "The panel did not start. Full log: $LOG"
 
 IP=$(curl -fsS4 --max-time 5 https://ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
-cat <<EOF
-
-=================================================================
- StandaloneCoders Cloud is running.
- Open http://${IP}:8000 (or your panel domain) in your browser.
- New versions appear under Settings > Updates.
-=================================================================
-EOF
+printf '\n%s  ┃%s %s✓ StandaloneCoders Cloud is running%s\n' "$G" "$N" "$B" "$N"
+printf '%s  ┃%s Open    http://%s:8000 (or your panel domain)\n' "$G" "$N" "$IP"
+printf '%s  ┃%s Update  Settings → Updates in the panel\n' "$G" "$N"
+printf '%s  ┃%s Log     %s\n\n' "$G" "$N" "$LOG"
