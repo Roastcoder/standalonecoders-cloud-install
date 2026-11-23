@@ -1,5 +1,15 @@
 # StandaloneCoders Cloud
 
+```text
+  ███████╗ ██████╗    ██████╗██╗      ██████╗ ██╗   ██╗██████╗
+  ██╔════╝██╔════╝   ██╔════╝██║     ██╔═══██╗██║   ██║██╔══██╗
+  ███████╗██║        ██║     ██║     ██║   ██║██║   ██║██║  ██║
+  ╚════██║██║        ██║     ██║     ██║   ██║██║   ██║██║  ██║
+  ███████║╚██████╗   ╚██████╗███████╗╚██████╔╝╚██████╔╝██████╔╝
+  ╚══════╝ ╚═════╝    ╚═════╝╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝
+  StandaloneCoders Cloud installer   mail · WhatsApp AI · safe updates
+```
+
 A self-hosted deploy platform for your own servers, built on [Coolify](https://github.com/coollabsio/coolify) (Apache-2.0) and extended by StandaloneCoders.
 
 This repository only holds the install steps and scripts. The platform itself ships as a private Docker image:
@@ -45,6 +55,40 @@ This repository only holds the install steps and scripts. The platform itself sh
    You can also run just `bash install.sh`: it asks for the username and token (the token is hidden as you type). The installer shows each step with a progress spinner, and keeps the full log in `/tmp/standalonecoders-install.log`.
 4. Open `http://your-server-ip:8000` and create the first admin account. **Do this straight away**: until an admin exists, anyone who opens the page can register.
 5. In **Settings**, set your panel domain (for example `https://cloud.example.com`) so it gets HTTPS.
+
+## What the installer looks like
+
+Each step is numbered, long steps show a spinner, and a failed step shows the error in red with the last lines of the log.
+
+```text
+  ███████╗ ██████╗    ██████╗██╗      ██████╗ ██╗   ██╗██████╗
+  ██╔════╝██╔════╝   ██╔════╝██║     ██╔═══██╗██║   ██║██╔══██╗
+  ███████╗██║        ██║     ██║     ██║   ██║██║   ██║██║  ██║
+  ╚════██║██║        ██║     ██║     ██║   ██║██║   ██║██║  ██║
+  ███████║╚██████╗   ╚██████╗███████╗╚██████╔╝╚██████╔╝██████╔╝
+  ╚══════╝ ╚═════╝    ╚═════╝╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝
+  StandaloneCoders Cloud installer   mail · WhatsApp AI · safe updates
+
+[1/4] Checking the existing installation
+      Found an installation in /data/coolify/source. Your projects and data stay.
+
+[2/4] Downloading StandaloneCoders Cloud
+      ✓ Logged in as your-username
+      ✓ Pulling the image
+
+[3/4] Backing up your data
+      ✓ Database
+      Saved to /data/coolify/backups/before-standalonecoders/database-20261123-062721.sql
+
+[4/4] Switching the panel to StandaloneCoders Cloud
+      ✓ Downloading the settings
+      ✓ Restarting the panel (about a minute; your apps keep running)
+
+  ┃ ✓ StandaloneCoders Cloud is running
+  ┃ Open    http://your-server-ip:8000 (or your panel domain)
+  ┃ Update  Settings → Updates in the panel
+  ┃ Log     /tmp/standalonecoders-install.log
+```
 
 ## Option B: You already run Coolify (original or an older version)
 
