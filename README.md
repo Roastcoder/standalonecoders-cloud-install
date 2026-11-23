@@ -10,6 +10,11 @@
   StandaloneCoders Cloud installer   mail · WhatsApp AI · safe updates
 ```
 
+<p>
+  <a href="https://github.com/Roastcoder/standalonecoders-cloud-install/stargazers"><img src="https://img.shields.io/github/stars/Roastcoder/standalonecoders-cloud-install?style=for-the-badge&color=B9FF66&labelColor=101211&logo=github" alt="Stars" /></a>
+  <a href="https://github.com/Roastcoder/standalonecoders-cloud-install/discussions"><img src="https://img.shields.io/badge/Questions-Discussions-B9FF66?style=for-the-badge&labelColor=101211&logo=github" alt="Discussions" /></a>
+</p>
+
 A self-hosted deploy platform for your own servers, built on [Coolify](https://github.com/coollabsio/coolify) (Apache-2.0) and extended by StandaloneCoders.
 
 This repository only holds the install steps and scripts. The platform itself ships as a public Docker image:
@@ -129,6 +134,10 @@ It backs up the database to `/data/coolify/backups/before-switch-back/`, removes
 | Panel shows "restarting" for more than 5 minutes | Run `docker logs coolify --tail 50` on the server and send us the output. |
 
 To restore a backup: `cat /data/coolify/backups/before-standalonecoders/database-<time>.sql | docker exec -i coolify-db psql -U coolify -d coolify`
+
+## Questions and support
+
+Ask in [Discussions](https://github.com/Roastcoder/standalonecoders-cloud-install/discussions). Someone may already have hit the same problem, and the answer helps the next person too. If StandaloneCoders Cloud is useful to you, a ⭐ on this repo helps others find it.
 
 ## License
 
