@@ -1,0 +1,6 @@
+# Placed at /data/coolify/source/docker-compose.custom.yml by install.sh.
+# The platform loads this file on top of its own compose files, so the panel runs StandaloneCoders Cloud.
+services:
+  coolify:
+    image: "ghcr.io/roastcoder/standalonecoders-cloud:latest"
+    pull_policy: always
